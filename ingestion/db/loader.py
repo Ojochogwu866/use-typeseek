@@ -37,7 +37,7 @@ def upsert_font(conn: psycopg.Connection, family: FontFamily) -> int:
 
 def load_embedding_center(conn: psycopg.Connection) -> np.ndarray | None:
     row = conn.execute("SELECT vec FROM embedding_center LIMIT 1").fetchone()
-    return row[0] if row else None
+    return row[0].to_numpy() if row else None
 
 
 def upsert_embedding(conn: psycopg.Connection, font_id: int, vector: np.ndarray, center: np.ndarray | None) -> None:
@@ -51,6 +51,22 @@ def upsert_embedding(conn: psycopg.Connection, font_id: int, vector: np.ndarray,
         ON CONFLICT (font_id) DO UPDATE SET vec = EXCLUDED.vec
         """,
         (font_id, vector),
+    )
+
+
+def upsert_embedding_by_weight(
+    conn: psycopg.Connection, font_id: int, weight: str, vector: np.ndarray, center: np.ndarray | None
+) -> None:
+    if center is not None:
+        vector = vector - center
+        vector = vector / np.linalg.norm(vector)
+    conn.execute(
+        """
+        INSERT INTO embeddings_by_weight (font_id, weight, vec)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (font_id, weight) DO UPDATE SET vec = EXCLUDED.vec
+        """,
+        (font_id, weight, vector),
     )
 
 
@@ -72,12 +88,15 @@ def load_family(
     conn: psycopg.Connection,
     family: FontFamily,
     embedding: np.ndarray | None,
+    weight_embeddings: dict[str, np.ndarray],
     llm_tags: str | None,
     center: np.ndarray | None,
 ) -> int:
     font_id = upsert_font(conn, family)
     if embedding is not None:
         upsert_embedding(conn, font_id, embedding, center)
+    for weight, vector in weight_embeddings.items():
+        upsert_embedding_by_weight(conn, font_id, weight, vector, center)
     upsert_description(conn, font_id, official_text=f"{family.name} ({family.category})", llm_tags=llm_tags)
     return font_id
 
@@ -90,11 +109,18 @@ def main() -> None:
         logger.warning("no embedding_center row found — new embeddings will be stored uncentered")
 
     loaded = missing_embedding = missing_tags = failed = 0
+    weight_vectors_loaded = 0
     for family in tqdm(families, desc="loading corpus"):
         embedding_path = EMBEDDINGS_DIR / f"{family.slug}.npy"
         embedding = np.load(embedding_path) if embedding_path.exists() else None
         if embedding is None:
             missing_embedding += 1
+
+        weight_dir = EMBEDDINGS_DIR / family.slug / "weights"
+        weight_embeddings = (
+            {path.stem: np.load(path) for path in weight_dir.glob("*.npy")} if weight_dir.exists() else {}
+        )
+        weight_vectors_loaded += len(weight_embeddings)
 
         tags_path = TAGS_DIR / f"{family.slug}.txt"
         llm_tags = tags_path.read_text() if tags_path.exists() else None
@@ -102,12 +128,12 @@ def main() -> None:
             missing_tags += 1
 
         try:
-            load_family(conn, family, embedding, llm_tags, center)
+            load_family(conn, family, embedding, weight_embeddings, llm_tags, center)
         except psycopg.OperationalError:
             logger.warning("connection dropped while loading %s, reconnecting", family.name)
             conn = get_connection()
             try:
-                load_family(conn, family, embedding, llm_tags, center)
+                load_family(conn, family, embedding, weight_embeddings, llm_tags, center)
             except psycopg.OperationalError:
                 logger.warning("failed to load %s after reconnect", family.name, exc_info=True)
                 failed += 1
@@ -115,11 +141,12 @@ def main() -> None:
         loaded += 1
 
     logger.info(
-        "loaded %d families (%d without an embedding, %d without tags, %d failed)",
+        "loaded %d families (%d without an embedding, %d without tags, %d failed, %d weight vectors)",
         loaded,
         missing_embedding,
         missing_tags,
         failed,
+        weight_vectors_loaded,
     )
 
 

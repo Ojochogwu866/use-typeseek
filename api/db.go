@@ -73,18 +73,34 @@ func (d *DB) centerQuery(vec []float32) []float32 {
 
 const fontColumns = "id, name, category, license, source_url"
 
+// vectorSearchPoolSize bounds the raw (font, weight) candidate pool before dedup to best-per-font.
+const vectorSearchPoolSize = 2000
+
 // license is an exact-match filter; pass "" to skip it and match every license.
+// Ranks each font by its best-matching weight (embeddings_by_weight), not a blended average.
 func (d *DB) SearchByVector(ctx context.Context, vec []float32, license string, limit int) ([]FontResult, error) {
 	vec = d.centerQuery(vec)
 	rows, err := d.pool.Query(ctx, `
+		WITH candidates AS (
+			SELECT embeddings_by_weight.font_id, embeddings_by_weight.vec <=> $1 AS dist
+			FROM embeddings_by_weight
+			JOIN fonts ON fonts.id = embeddings_by_weight.font_id
+			WHERE $2 = '' OR fonts.license = $2
+			ORDER BY embeddings_by_weight.vec <=> $1
+			LIMIT $4
+		),
+		best_per_font AS (
+			SELECT DISTINCT ON (font_id) font_id, dist
+			FROM candidates
+			ORDER BY font_id, dist
+		)
 		SELECT fonts.id, fonts.name, fonts.category, fonts.license, fonts.source_url,
-		       greatest(0, 1 - (embeddings.vec <=> $1)) AS similarity
-		FROM embeddings
-		JOIN fonts ON fonts.id = embeddings.font_id
-		WHERE $2 = '' OR fonts.license = $2
-		ORDER BY embeddings.vec <=> $1
+		       greatest(0, 1 - best_per_font.dist) AS similarity
+		FROM best_per_font
+		JOIN fonts ON fonts.id = best_per_font.font_id
+		ORDER BY best_per_font.dist
 		LIMIT $3
-	`, pgvector.NewVector(vec), license, limit)
+	`, pgvector.NewVector(vec), license, limit, vectorSearchPoolSize)
 	if err != nil {
 		return nil, err
 	}

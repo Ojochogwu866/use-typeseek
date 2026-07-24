@@ -29,6 +29,18 @@ CREATE TABLE IF NOT EXISTS embedding_center (
     vec vector(768) NOT NULL
 );
 
+-- One embedding per weight a font ships, not mean-pooled -- image search matches whichever
+-- weight scores best per font instead of a blended average across all weights.
+CREATE TABLE IF NOT EXISTS embeddings_by_weight (
+    font_id INTEGER NOT NULL REFERENCES fonts (id) ON DELETE CASCADE,
+    weight  TEXT NOT NULL,
+    vec     vector(768) NOT NULL,
+    PRIMARY KEY (font_id, weight)
+);
+
+CREATE INDEX IF NOT EXISTS embeddings_by_weight_vec_hnsw
+    ON embeddings_by_weight USING hnsw (vec vector_cosine_ops);
+
 CREATE TABLE IF NOT EXISTS descriptions (
     font_id      INTEGER PRIMARY KEY REFERENCES fonts (id) ON DELETE CASCADE,
     official_text TEXT,

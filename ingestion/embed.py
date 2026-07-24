@@ -14,7 +14,7 @@ from tqdm import tqdm
 from ingestion.catalog import load_catalog
 from ingestion.config import CATALOG_PATH, EMBEDDING_DIM, EMBEDDING_MODEL, EMBEDDING_PRETRAINED, EMBEDDINGS_DIR
 from ingestion.logging_setup import get_logger
-from ingestion.render_specimens import list_specimens
+from ingestion.render_specimens import list_specimens, list_weight_specimens
 
 logger = get_logger(__name__)
 
@@ -83,21 +83,38 @@ def embed_family(specimen_paths: list[Path]) -> np.ndarray:
     return mean / np.linalg.norm(mean)
 
 
+def embed_family_weights(weight_paths: dict[str, Path]) -> dict[str, np.ndarray]:
+    """One standalone (unpooled) embedding per weight."""
+    return {weight: embed_image(path) for weight, path in weight_paths.items()}
+
+
 def main() -> None:
     EMBEDDINGS_DIR.mkdir(parents=True, exist_ok=True)
     families = load_catalog(CATALOG_PATH)
 
     embedded = skipped = 0
+    weight_vectors = 0
     for family in tqdm(families, desc="embedding fonts"):
         specimen_paths = list_specimens(family)
         if not specimen_paths:
             skipped += 1
-            continue
-        vector = embed_family(specimen_paths)
-        np.save(EMBEDDINGS_DIR / f"{family.slug}.npy", vector)
-        embedded += 1
+        else:
+            vector = embed_family(specimen_paths)
+            np.save(EMBEDDINGS_DIR / f"{family.slug}.npy", vector)
+            embedded += 1
 
-    logger.info("embedded %d families, skipped %d (no specimens)", embedded, skipped)
+        weight_paths = list_weight_specimens(family)
+        if weight_paths:
+            weight_dir = EMBEDDINGS_DIR / family.slug / "weights"
+            weight_dir.mkdir(parents=True, exist_ok=True)
+            for weight, vector in embed_family_weights(weight_paths).items():
+                np.save(weight_dir / f"{weight}.npy", vector)
+                weight_vectors += 1
+
+    logger.info(
+        "embedded %d families, skipped %d (no specimens), %d per-weight vectors",
+        embedded, skipped, weight_vectors,
+    )
 
 
 if __name__ == "__main__":

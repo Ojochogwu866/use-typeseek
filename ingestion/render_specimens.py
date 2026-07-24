@@ -49,6 +49,11 @@ def list_specimens(family: FontFamily) -> list[Path]:
     return sorted((SPECIMENS_DIR / family.slug).glob("*.png"))
 
 
+def list_weight_specimens(family: FontFamily) -> dict[str, Path]:
+    weights_dir = SPECIMENS_DIR / family.slug / "weights"
+    return {path.stem: path for path in sorted(weights_dir.glob("*.png"))} if weights_dir.exists() else {}
+
+
 def _is_valid_font(path: Path) -> bool:
     try:
         TTFont(path, lazy=True).close()
@@ -126,6 +131,28 @@ def _render_weight_strip(variant_paths: dict[str, Path], weights: list[str], des
     return dest
 
 
+def render_family_weights(family: FontFamily) -> dict[str, Path]:
+    """One plain pangram render per weight the family actually ships."""
+    variant_paths = {
+        variant: path
+        for variant in family.variant_urls
+        if (path := font_variant_path(family, variant)).exists() and _is_valid_font(path)
+    }
+    weights = [w for w in family.upright_weights if w in variant_paths]
+    if not weights:
+        return {}
+
+    out_dir = SPECIMENS_DIR / family.slug / "weights"
+    rendered = {}
+    for weight in weights:
+        try:
+            dest = _render_single_line(variant_paths[weight], PANGRAM, PANGRAM_CANVAS, out_dir / f"{weight}.png")
+            rendered[weight] = dest
+        except Exception:
+            logger.warning("failed to render weight %s for %s", weight, family.name, exc_info=True)
+    return rendered
+
+
 def render_family(family: FontFamily) -> list[Specimen]:
     variant_paths = {
         variant: path
@@ -160,12 +187,17 @@ def render_family(family: FontFamily) -> list[Specimen]:
 def main() -> None:
     families = load_catalog(CATALOG_PATH)
     rendered = skipped = 0
+    weight_specimens = 0
     for family in tqdm(families, desc="rendering specimens"):
         if render_family(family):
             rendered += 1
         else:
             skipped += 1
-    logger.info("rendered specimens for %d families, skipped %d", rendered, skipped)
+        weight_specimens += len(render_family_weights(family))
+    logger.info(
+        "rendered specimens for %d families, skipped %d, %d per-weight specimens",
+        rendered, skipped, weight_specimens,
+    )
 
 
 if __name__ == "__main__":
