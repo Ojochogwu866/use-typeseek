@@ -26,6 +26,18 @@ def main() -> None:
     register_vector(conn)
 
     with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM embedding_center")
+        if cur.fetchone()[0] > 0:
+            raise RuntimeError(
+                "embedding_center already has a row -- embeddings.vec is already centered. "
+                "Running this again would center already-centered data (double-centering), "
+                "not the raw embeddings. If fonts were removed and the corpus needs "
+                "recentering, recompute from the last embeddings_backup_*.json (raw, "
+                "pre-centering) instead, excluding the removed font_ids -- do not run this "
+                "script directly against the live table again."
+            )
+
+    with conn.cursor() as cur:
         cur.execute("SELECT font_id, vec FROM embeddings ORDER BY font_id")
         rows = cur.fetchall()
 
