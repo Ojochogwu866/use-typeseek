@@ -11,6 +11,7 @@ FONTS_DIR = DATA_DIR / "fonts"
 SPECIMENS_DIR = DATA_DIR / "specimens"
 EMBEDDINGS_DIR = DATA_DIR / "embeddings"
 TAGS_DIR = DATA_DIR / "tags"
+TRAINING_DIR = DATA_DIR / "training"
 CATALOG_PATH = DATA_DIR / "fonts.json"
 
 GOOGLE_FONTS_API_KEY = os.environ.get("GOOGLE_FONTS_API_KEY", "")
