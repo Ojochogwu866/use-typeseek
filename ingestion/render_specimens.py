@@ -28,14 +28,11 @@ WEIGHT_STRIP_WIDTH = 900
 WEIGHT_STRIP_ROW_HEIGHT = 90
 MARGIN = 24
 
-# Real-world photos of lettering (signs, screenshots, book covers) look nothing like a clean
-# black-on-white render — varied background/contrast, slight rotation, and capture blur.
-# This specimen bridges that gap so the stored embedding isn't purely "text on white paper".
 PHOTO_CANVAS = (1200, 260)
 PHOTO_BACKGROUNDS = [
-    ((28, 29, 34), (245, 245, 245)),   # dark background, light text
-    ((235, 229, 217), (30, 30, 30)),   # warm off-white background, dark text
-    ((255, 255, 255), (10, 10, 10)),   # plain white background, near-black text
+    ((28, 29, 34), (245, 245, 245)),
+    ((235, 229, 217), (30, 30, 30)),
+    ((255, 255, 255), (10, 10, 10)),
 ]
 
 

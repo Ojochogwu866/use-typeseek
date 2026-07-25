@@ -1,10 +1,4 @@
-"""Generate a large, heavily augmented image dataset for fine-tuning a font-similarity
-embedding model. Each font family is a class; many augmented renders (varied sample text,
-weight, background, rotation, blur, crop, brightness) are generated per class so the model
-learns to recognize a font's identity independent of exactly how it was photographed.
-
-Output layout matches torchvision's ImageFolder convention: TRAINING_DIR/<font-slug>/*.jpg
-"""
+"""Generates an augmented training set for font fine-tuning. Layout: TRAINING_DIR/<slug>/*.jpg"""
 
 import json
 import zlib
@@ -73,7 +67,7 @@ def _augment(base: Image.Image, seed: int) -> Image.Image:
     rng = Random(seed)
     bg_color, fg_color = rng.choice(BACKGROUNDS)
 
-    mask = base.point(lambda p: 255 - p)  # white text becomes the paintable mask
+    mask = base.point(lambda p: 255 - p)
     colored = Image.new("RGB", base.size, color=bg_color)
     fg_layer = Image.new("RGB", base.size, color=fg_color)
     colored.paste(fg_layer, mask=mask)
@@ -121,7 +115,7 @@ def generate_family(family: FontFamily, out_dir: Path) -> int:
                 logger.warning("failed to render %s at weight %s", family.name, weight, exc_info=True)
                 continue
             if bbox[2] <= bbox[0] or bbox[3] <= bbox[1]:
-                continue  # empty render (e.g. missing glyphs) -- skip, don't train on blank images
+                continue
             for aug_idx in range(AUGMENTATIONS_PER_COMBO):
                 seed = zlib.crc32(f"{family.slug}-{weight}-{text_idx}-{aug_idx}".encode())
                 image = _augment(base, seed)
@@ -132,7 +126,7 @@ def generate_family(family: FontFamily, out_dir: Path) -> int:
 
 
 def rng_quality(seed: int) -> int:
-    return 55 + (seed % 41)  # 55-95, bakes in real JPEG compression artifacts
+    return 55 + (seed % 41)
 
 
 def main() -> None:

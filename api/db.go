@@ -37,8 +37,6 @@ func newDB(ctx context.Context, databaseURL string) (*DB, error) {
 	return db, nil
 }
 
-// loadEmbeddingCenter caches the corpus mean embedding, used by centerQuery (stored embeddings
-// are centered once, in place, by ingestion/db/recenter_embeddings.py).
 func (d *DB) loadEmbeddingCenter(ctx context.Context) error {
 	var vec pgvector.Vector
 	if err := d.pool.QueryRow(ctx, "SELECT vec FROM embedding_center LIMIT 1").Scan(&vec); err != nil {
@@ -48,11 +46,7 @@ func (d *DB) loadEmbeddingCenter(ctx context.Context) error {
 	return nil
 }
 
-// centerQuery subtracts the corpus mean and renormalizes, matching how stored embeddings were
-// centered. Only applied to image queries: text and image embeddings occupy systematically
-// different regions of SigLIP's shared space (the "modality gap"), and empirically centering
-// text queries against the image-domain mean destroys rather than restores their separation —
-// text queries compare directly against the (already-centered) stored embeddings instead.
+// centerQuery: only for image queries — centering text queries the same way hurts, not helps.
 func (d *DB) centerQuery(vec []float32) []float32 {
 	out := make([]float32, len(vec))
 	var normSq float32
@@ -77,7 +71,6 @@ const fontColumns = "id, name, category, license, source_url"
 const vectorSearchPoolSize = 2000
 
 // license is an exact-match filter; pass "" to skip it and match every license.
-// Ranks each font by its best-matching weight (embeddings_by_weight), not a blended average.
 func (d *DB) SearchByVector(ctx context.Context, vec []float32, license string, limit int) ([]FontResult, error) {
 	vec = d.centerQuery(vec)
 	rows, err := d.pool.Query(ctx, `
