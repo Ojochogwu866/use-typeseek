@@ -38,8 +38,15 @@ python -m ingestion.download_fonts     # cache font files locally
 python -m ingestion.render_specimens   # render glyph/pangram/weight-strip PNGs
 pip install -e ".[embed]"              # torch + open_clip, needed for the next step
 python -m ingestion.embed              # SigLIP embeddings, one vector per font
+python -m ingestion.enrich_descriptions # API-first tags; falls back to local SigLIP tagging
 python -m ingestion.db.loader          # upsert everything into Postgres
 ```
+
+`enrich_descriptions` skips existing tag files, so it is safe to stop and rerun. If
+`data/fonts.json` and `data/specimens/` are unavailable but `data/training/` exists,
+it uses the training manifest and one JPEG per font automatically. When Anthropic API
+access is unavailable, it switches to local zero-shot SigLIP tags for the rest of that
+run; a future run tries the API again first.
 
 Optional, for serving specimen images from R2/S3:
 

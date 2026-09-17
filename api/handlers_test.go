@@ -77,11 +77,11 @@ func TestHandleSearchText_BelowConfidenceReturnsEmpty(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&results); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if len(results) != 0 {
-		t.Errorf("results = %v, want empty when below confidence threshold", results)
+	if len(results) != 1 || results[0].Name != "Should not appear" {
+		t.Errorf("results = %v, want lexical results even when vector confidence is low", results)
 	}
-	if store.searchByTextCalled {
-		t.Error("SearchByText was called despite similarity being below the confidence threshold")
+	if !store.searchByTextCalled {
+		t.Error("SearchByText was not called when lexical results should remain available")
 	}
 }
 

@@ -109,17 +109,6 @@ func (s *Server) handleSearchText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	topSimilarity, err := s.db.TopVectorSimilarity(r.Context(), vector)
-	if err != nil {
-		log.Printf("confidence check failed: %v", err)
-		writeError(w, http.StatusInternalServerError, "search failed")
-		return
-	}
-	if topSimilarity < s.minTextSearchConfidence {
-		writeJSON(w, http.StatusOK, []FontResult{})
-		return
-	}
-
 	results, err := s.db.SearchByText(r.Context(), vector, query, body.License, defaultSearchLimit)
 	if err != nil {
 		log.Printf("text search query failed: %v", err)
