@@ -1,0 +1,27 @@
+[
+  {
+    "query": "elegant refined serif",
+    "expected_category": "serif",
+    "expected_fonts": ["Cormorant Garamond", "Playfair Display", "Libre Caslon Display"]
+  },
+  {
+    "query": "technical typewriter monospace",
+    "expected_category": "monospace",
+    "expected_fonts": ["Roboto Mono", "IBM Plex Mono", "Workbench"]
+  },
+  {
+    "query": "friendly rounded modern sans-serif",
+    "expected_category": "sans-serif",
+    "expected_fonts": ["Nunito", "Poppins", "Quicksand"]
+  },
+  {
+    "query": "bold rounded sans-serif",
+    "expected_category": "sans-serif",
+    "expected_fonts": ["Bebas Neue", "Oswald", "Anton"]
+  },
+  {
+    "query": "casual hand-drawn script",
+    "expected_category": "handwriting",
+    "expected_fonts": ["Caveat", "Pacifico", "Dancing Script"]
+  }
+]

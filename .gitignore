@@ -10,3 +10,5 @@ node_modules/
 dist/
 api/api.exe
 api/api
+todos.md
+.DS_Store

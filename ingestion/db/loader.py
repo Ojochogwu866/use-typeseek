@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from ingestion.catalog import load_catalog
 from ingestion.config import CATALOG_PATH, DATABASE_URL, EMBEDDINGS_DIR, TAGS_DIR
+from ingestion.enrich_descriptions import load_training_catalog
 from ingestion.logging_setup import get_logger
 from ingestion.models import FontFamily
 
@@ -102,7 +103,7 @@ def load_family(
 
 
 def main() -> None:
-    families = load_catalog(CATALOG_PATH)
+    families = load_catalog(CATALOG_PATH) if CATALOG_PATH.exists() else load_training_catalog()
     conn = get_connection()
     center = load_embedding_center(conn)
     if center is None:
