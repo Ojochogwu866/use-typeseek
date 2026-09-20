@@ -125,7 +125,8 @@ func (d *DB) TopVectorSimilarity(ctx context.Context, vec []float32) (float64, e
 
 // Hybrid vector+full-text RRF search; similarity normalizes against RRF's theoretical max, not this set's max, so weak matches don't read as 100%.
 func (d *DB) SearchByText(ctx context.Context, vec []float32, query, license string, limit int) ([]FontResult, error) {
-	vec = d.centerQuery(vec)
+	// vec arrives already centered by the sidecar against the text-modality mean; centering it
+	// again with the image-corpus mean (d.center) pushes every query toward the same hub fonts.
 	category := inferCategory(query)
 	rows, err := d.pool.Query(ctx, `
 		WITH vector_results AS (

@@ -76,6 +76,33 @@ def embed_text(text: str) -> np.ndarray:
     return _normalized(features.squeeze(0).cpu().numpy())
 
 
+# Generic descriptors, deliberately unrelated to any evaluation query: their mean text
+# embedding approximates where text queries sit in general, i.e. the text modality's centre.
+_TEXT_CENTER_WORDS = """
+bold thin light heavy elegant playful serious modern vintage retro rounded sharp decorative clean
+messy formal casual geometric organic condensed wide narrow friendly cold warm technical handwritten
+calligraphic futuristic classic minimal ornate sturdy delicate quirky corporate luxurious rustic
+whimsical robotic soft angular smooth textured grungy poster editorial
+""".split()
+
+
+@lru_cache(maxsize=1)
+def _text_center() -> np.ndarray:
+    return np.stack([embed_text(f"a {word} font") for word in _TEXT_CENTER_WORDS]).mean(axis=0)
+
+
+def embed_search_text(text: str) -> np.ndarray:
+    """Embed a search query into the same centered space as the stored font vectors.
+
+    Stored image vectors are centered on the image-corpus mean. Text and image embeddings
+    occupy separate regions of SigLIP's space (the modality gap), so subtracting the image
+    mean from a text vector pushes every query toward the same few "hub" fonts. Each
+    modality is centered on its own mean instead.
+    """
+    centered = embed_text(text) - _text_center()
+    return centered / np.linalg.norm(centered)
+
+
 def embed_family(specimen_paths: list[Path]) -> np.ndarray:
     """Mean-pool per-specimen embeddings into a single vector for the font."""
     vectors = np.stack([embed_image(path) for path in specimen_paths])
