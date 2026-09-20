@@ -62,3 +62,17 @@ python -m ingestion.sanity_check path/to/image.png
 ```
 
 Prints the top-k nearest fonts in the index by embedding similarity.
+
+## Evaluating text search
+
+`evaluation/text_queries.json` holds style queries with the fonts a designer would accept
+for each. With the sidecar and API running:
+
+```
+python evaluation/run_eval.py --url http://127.0.0.1:8877 --label my-change
+python evaluation/run_eval.py --compare head my-change
+```
+
+Reports hit@1/5/10 and MRR, and saves a snapshot to `evaluation/results/`. The expected
+lists are incomplete (many valid fonts aren't listed), so absolute rates read low --
+compare snapshots against each other and read the per-query top-5 rows.

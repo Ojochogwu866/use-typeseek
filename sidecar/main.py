@@ -12,7 +12,7 @@ from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel
 
 from ingestion.detect_regions import detect_regions
-from ingestion.embed import embed_pil_image, embed_text
+from ingestion.embed import embed_pil_image, embed_search_text
 
 pillow_heif.register_heif_opener()  # lets Image.open() decode .heic/.heif uploads (iPhone default)
 
@@ -101,5 +101,5 @@ async def embed_image_regions_endpoint(file: UploadFile = File(...)) -> EmbedReg
 
 @app.post("/embed-text", response_model=EmbedResponse)
 def embed_text_endpoint(payload: TextEmbedRequest) -> EmbedResponse:
-    vector = embed_text(payload.text)
+    vector = embed_search_text(payload.text)
     return EmbedResponse(vector=vector.tolist())

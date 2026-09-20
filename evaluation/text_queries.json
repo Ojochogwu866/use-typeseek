@@ -1,27 +1,327 @@
 [
   {
-    "query": "elegant refined serif",
-    "expected_category": "serif",
-    "expected_fonts": ["Cormorant Garamond", "Playfair Display", "Libre Caslon Display"]
-  },
-  {
-    "query": "technical typewriter monospace",
-    "expected_category": "monospace",
-    "expected_fonts": ["Roboto Mono", "IBM Plex Mono", "Workbench"]
+    "query": "friendly rounded modern",
+    "expected_fonts": [
+      "Nunito",
+      "Baloo 2",
+      "M PLUS Rounded 1c",
+      "Comfortaa",
+      "Varela Round",
+      "Fredoka",
+      "Quicksand"
+    ]
   },
   {
     "query": "friendly rounded modern sans-serif",
     "expected_category": "sans-serif",
-    "expected_fonts": ["Nunito", "Poppins", "Quicksand"]
+    "expected_fonts": [
+      "Nunito",
+      "Quicksand",
+      "Varela Round",
+      "Fredoka",
+      "M PLUS Rounded 1c",
+      "Rubik",
+      "Paytone One",
+      "Madimi One",
+      "Mochiy Pop One",
+      "Mochiy Pop P One",
+      "Belanosima"
+    ]
   },
   {
     "query": "bold rounded sans-serif",
     "expected_category": "sans-serif",
-    "expected_fonts": ["Bebas Neue", "Oswald", "Anton"]
+    "expected_fonts": [
+      "Fredoka",
+      "Nunito",
+      "Varela Round",
+      "M PLUS Rounded 1c",
+      "Rubik",
+      "Braah One"
+    ]
+  },
+  {
+    "query": "condensed bold poster headline",
+    "expected_fonts": [
+      "Pathway Gothic One",
+      "Oswald",
+      "Antonio",
+      "League Gothic",
+      "Bebas Neue",
+      "Anton",
+      "Fjalla One",
+      "Vina Sans",
+      "New Amsterdam",
+      "BBH Bogle"
+    ]
+  },
+  {
+    "query": "geometric minimal sans-serif",
+    "expected_category": "sans-serif",
+    "expected_fonts": [
+      "Outfit",
+      "Montserrat",
+      "Poppins",
+      "Jost",
+      "Josefin Sans"
+    ]
+  },
+  {
+    "query": "clean readable sans-serif for body text",
+    "expected_category": "sans-serif",
+    "expected_fonts": [
+      "Source Sans 3",
+      "Inter",
+      "Noto Sans",
+      "Roboto",
+      "Lato",
+      "Open Sans",
+      "Special Gothic",
+      "Strichpunkt Sans",
+      "Libertinus Sans"
+    ]
+  },
+  {
+    "query": "elegant refined serif",
+    "expected_category": "serif",
+    "expected_fonts": [
+      "Noto Serif Display",
+      "Cormorant Infant",
+      "Playfair Display",
+      "Libre Caslon Display",
+      "Cinzel",
+      "Cormorant Unicase",
+      "Playfair Display SC",
+      "Oranienbaum",
+      "Cormorant Garamond",
+      "Bodoni Moda",
+      "Cormorant",
+      "Bentham"
+    ]
+  },
+  {
+    "query": "classic book serif",
+    "expected_category": "serif",
+    "expected_fonts": [
+      "Merriweather",
+      "Source Serif 4",
+      "Crimson Text",
+      "Libre Baskerville",
+      "Lora",
+      "EB Garamond",
+      "Cantata One",
+      "Benne",
+      "IM Fell French Canon"
+    ]
+  },
+  {
+    "query": "high contrast didone fashion serif",
+    "expected_category": "serif",
+    "expected_fonts": [
+      "Playfair Display",
+      "Playfair Display SC",
+      "Bodoni Moda",
+      "Bodoni Moda SC",
+      "Abril Fatface",
+      "DM Serif Display",
+      "Prata",
+      "Gloock",
+      "Rozha One",
+      "Oranienbaum"
+    ]
+  },
+  {
+    "query": "sturdy slab serif",
+    "expected_category": "serif",
+    "expected_fonts": [
+      "Arvo",
+      "Zilla Slab",
+      "Roboto Slab",
+      "Rokkitt",
+      "Alfa Slab One",
+      "Bevan"
+    ]
+  },
+  {
+    "query": "technical typewriter monospace",
+    "expected_category": "monospace",
+    "expected_fonts": [
+      "Anonymous Pro",
+      "Courier Prime",
+      "Cutive Mono",
+      "Space Mono",
+      "Roboto Mono",
+      "IBM Plex Mono",
+      "Share Tech Mono",
+      "Kode Mono",
+      "VT323"
+    ]
+  },
+  {
+    "query": "clean coding monospace",
+    "expected_category": "monospace",
+    "expected_fonts": [
+      "IBM Plex Mono",
+      "Cousine",
+      "Inconsolata",
+      "JetBrains Mono",
+      "Roboto Mono",
+      "Fira Code",
+      "Lekton",
+      "Source Code Pro",
+      "Ubuntu Sans Mono",
+      "Martian Mono",
+      "Chivo Mono",
+      "Hibur Mono",
+      "Anonymous Pro",
+      "Sometype Mono"
+    ]
   },
   {
     "query": "casual hand-drawn script",
     "expected_category": "handwriting",
-    "expected_fonts": ["Caveat", "Pacifico", "Dancing Script"]
+    "expected_fonts": [
+      "Indie Flower",
+      "Shadows Into Light",
+      "Dawning of a New Day",
+      "Pacifico",
+      "Patrick Hand",
+      "Kristi",
+      "Caveat",
+      "Kalam",
+      "Beth Ellen",
+      "Water Brush",
+      "Comforter Brush"
+    ]
+  },
+  {
+    "query": "elegant wedding calligraphy script",
+    "expected_category": "handwriting",
+    "expected_fonts": [
+      "Passions Conflict",
+      "Tangerine",
+      "Alex Brush",
+      "Ruthie",
+      "Great Vibes",
+      "Love Light",
+      "Lavishly Yours",
+      "Mea Culpa",
+      "Allura",
+      "Lovers Quarrel",
+      "Fleur De Leah",
+      "Herr Von Muellerhoff",
+      "Sacramento",
+      "Parisienne",
+      "Sassy Frass",
+      "Ballet",
+      "Pinyon Script",
+      "Miss Fajardose",
+      "Monsieur La Doulaise"
+    ]
+  },
+  {
+    "query": "brush pen handwriting",
+    "expected_category": "handwriting",
+    "expected_fonts": [
+      "Kaushan Script",
+      "Yellowtail",
+      "Permanent Marker",
+      "Satisfy",
+      "Sriracha",
+      "Comforter Brush",
+      "Water Brush",
+      "Kolker Brush",
+      "Splash",
+      "Homemade Apple"
+    ]
+  },
+  {
+    "query": "playful comic book display",
+    "expected_fonts": [
+      "Boogaloo",
+      "Chewy",
+      "Luckiest Guy",
+      "Bangers",
+      "Comic Neue",
+      "Ranchers",
+      "Spicy Rice",
+      "Ceviche One"
+    ]
+  },
+  {
+    "query": "retro 70s display",
+    "expected_fonts": [
+      "Shrikhand",
+      "Lobster",
+      "Righteous",
+      "Chango",
+      "Rammetto One",
+      "Monoton",
+      "Chicle",
+      "Oleo Script Swash Caps"
+    ]
+  },
+  {
+    "query": "futuristic sci-fi display",
+    "expected_fonts": [
+      "Tektur",
+      "Exo 2",
+      "Audiowide",
+      "Oxanium",
+      "Stalinist One",
+      "Orbitron",
+      "Michroma",
+      "Syncopate",
+      "Coda",
+      "Gajraj One"
+    ]
+  },
+  {
+    "query": "blackletter gothic",
+    "expected_fonts": [
+      "UnifrakturMaguntia",
+      "UnifrakturCook",
+      "Pirata One",
+      "Grenze Gotisch",
+      "New Rocker",
+      "Manufacturing Consent",
+      "Jacquard 12",
+      "Jacquard 24",
+      "Jacquard 12 Charted",
+      "Jacquard 24 Charted",
+      "Jacquarda Bastarda 9 Charted"
+    ]
+  },
+  {
+    "query": "pixel bitmap retro game",
+    "expected_fonts": [
+      "Bytesized",
+      "Tiny5",
+      "Jersey 10",
+      "Coral Pixels",
+      "Bitcount Grid Double",
+      "Jacquarda Bastarda 9",
+      "Press Start 2P",
+      "Jersey 10 Charted",
+      "VT323",
+      "DotGothic16",
+      "Micro 5",
+      "Micro 5 Charted",
+      "Jacquarda Bastarda 9 Charted",
+      "Jersey 15 Charted",
+      "Jacquard 12 Charted",
+      "Pixelify Sans",
+      "Jersey 20 Charted",
+      "Silkscreen"
+    ]
+  },
+  {
+    "query": "stencil military",
+    "expected_fonts": [
+      "Black Ops One",
+      "Allerta Stencil",
+      "Stardos Stencil",
+      "Notable"
+    ]
   }
 ]
