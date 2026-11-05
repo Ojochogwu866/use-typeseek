@@ -21,7 +21,8 @@ from ingestion.render_specimens import list_specimens
 logger = get_logger(__name__)
 
 PROMPT = (
-    "Look at this font specimen. List 5-8 comma-separated words or short phrases describing "
+    "Look at this font specimen. Ignore the angle, colours and background of the image; describe only "
+    "the letterforms. List 5-8 comma-separated words or short phrases describing "
     "its visual style, the way a designer searching for this look would type them "
     "(e.g. bold, rounded, geometric, playful, elegant, hand-drawn, condensed, futuristic, "
     "serif, script, tight spacing). Reply with ONLY the comma-separated list, nothing else."
@@ -65,14 +66,34 @@ def tags_path(family: FontFamily) -> Path:
 
 def pick_specimen(family: FontFamily) -> Path | None:
     """Prefer the pangram (more letterforms, more informative for style) over the bare glyph."""
+    specimens = pick_specimens(family)
+    return specimens[0] if specimens else None
+
+
+def _weight(image: Path) -> int:
+    prefix = image.stem.split("_")[0]
+    return 400 if prefix == "regular" else int(prefix) if prefix.isdigit() else 400
+
+
+def pick_specimens(family: FontFamily) -> list[Path]:
+    """The regular weight, plus the heaviest when the family has one, so the description fits the family.
+
+    Training images are sorted by name, so taking the first one showed the lightest weight: Fredoka Light
+    was described as thin and minimal, and never matched "bold rounded playful".
+    """
     specimens = {path.stem: path for path in list_specimens(family)}
-    specimen = specimens.get("pangram") or specimens.get("glyph") or next(iter(specimens.values()), None)
-    if specimen is not None:
-        return specimen
+    rendered = specimens.get("pangram") or specimens.get("glyph") or next(iter(specimens.values()), None)
+    if rendered is not None:
+        return [rendered]
 
     training_dir = TRAINING_DIR / family.slug
-    training_images = sorted(training_dir.glob("*.jpg"))
-    return training_images[0] if training_images else None
+    upright = sorted(training_dir.glob("*_0_0.jpg"))
+    if not upright:
+        training_images = sorted(training_dir.glob("*.jpg"))
+        return training_images[:1]
+    regular = next((image for image in upright if image.stem.startswith("regular")), upright[0])
+    heaviest = max(upright, key=_weight)
+    return [regular] if heaviest == regular else [regular, heaviest]
 
 
 def load_training_catalog() -> list[FontFamily]:
@@ -136,26 +157,32 @@ def tag_family_local(family: FontFamily) -> str | None:
 def tag_family(client, family: FontFamily) -> str | None:
     # client is an anthropic.Anthropic instance; left untyped since the SDK is lazily
     # imported in main() to keep the base install light.
-    specimen = pick_specimen(family)
-    if specimen is None:
+    specimens = pick_specimens(family)
+    if not specimens:
         return None
 
-    image_data = base64.standard_b64encode(specimen.read_bytes()).decode("ascii")
-    media_type = "image/jpeg" if specimen.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+    images = [
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": "image/jpeg" if specimen.suffix.lower() in {".jpg", ".jpeg"} else "image/png",
+                "data": base64.standard_b64encode(specimen.read_bytes()).decode("ascii"),
+            },
+        }
+        for specimen in specimens
+    ]
+    note = "These images show the same font family at its regular and heaviest weight. " if len(specimens) > 1 else ""
+    # Room for the model's thinking before its answer; the answer itself is a short list.
     response = client.messages.create(
         model=ENRICHMENT_MODEL,
-        max_tokens=100,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_data}},
-                    {"type": "text", "text": PROMPT},
-                ],
-            }
-        ],
+        max_tokens=1024,
+        messages=[{"role": "user", "content": [*images, {"type": "text", "text": note + PROMPT}]}],
     )
-    return response.content[0].text.strip()
+    text = " ".join(block.text for block in response.content if block.type == "text").strip()
+    if not text:
+        raise RuntimeError(f"empty description for {family.name} (stop reason: {response.stop_reason})")
+    return text
 
 
 def main() -> None:
@@ -185,14 +212,9 @@ def main() -> None:
                 tags = tag_family_local(family)
         except Exception:
             if api_enabled:
-                logger.warning("API enrichment unavailable for %s; switching to local tagging", family.name)
-                api_enabled = False
-                try:
-                    tags = tag_family_local(family)
-                except Exception:
-                    logger.warning("local tagging failed for %s", family.name, exc_info=True)
-                    failed += 1
-                    continue
+                # Stop rather than quietly mixing local tags into an API run; rerunning resumes where it stopped.
+                logger.error("API enrichment failed for %s; stopping so the run can be fixed and resumed", family.name)
+                raise
             else:
                 logger.warning("local tagging failed for %s", family.name, exc_info=True)
                 failed += 1

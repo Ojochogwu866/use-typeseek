@@ -36,4 +36,4 @@ EMBEDDING_DIM = 768
 GLYPH_SAMPLE = "Rag"
 PANGRAM = "The quick brown fox jumps over the lazy dog"
 
-ENRICHMENT_MODEL = "claude-haiku-4-5-20251001"
+ENRICHMENT_MODEL = "claude-haiku-5-5"

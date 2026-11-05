@@ -24,7 +24,7 @@ def search(url: str, query: str) -> list[dict]:
     request = urllib.request.Request(
         f"{url}/search/text",
         data=json.dumps({"query": query}).encode(),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "User-Agent": "typeseek-eval/1.0"},
     )
     with urllib.request.urlopen(request, timeout=120) as response:
         return json.load(response)
