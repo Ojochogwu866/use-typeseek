@@ -1,8 +1,6 @@
 const LICENSE_OPTIONS = [
-	{ value: '', label: 'Any' },
+	{ value: '', label: 'Any licence' },
 	{ value: 'commercial-ok', label: 'Commercial OK' },
-	{ value: 'personal-only', label: 'Personal only' },
-	{ value: 'unclear', label: 'Unclear' },
 ];
 
 interface LicenseFilterProps {
@@ -11,17 +9,9 @@ interface LicenseFilterProps {
 	disabled?: boolean;
 }
 
-export function LicenseFilter({
-	value,
-	onChange,
-	disabled,
-}: LicenseFilterProps) {
+export function LicenseFilter({ value, onChange, disabled }: LicenseFilterProps) {
 	return (
-		<div
-			className="flex flex-wrap items-center justify-center gap-2"
-			role="radiogroup"
-			aria-label="Filter by license"
-		>
+		<div className="inline-flex rounded-lg bg-ground p-[3px]" role="radiogroup" aria-label="Filter by licence">
 			{LICENSE_OPTIONS.map((option) => {
 				const isActive = value === option.value;
 				return (
@@ -32,10 +22,8 @@ export function LicenseFilter({
 						aria-checked={isActive}
 						disabled={disabled}
 						onClick={() => onChange(option.value)}
-						className={`cursor-pointer rounded-full border px-3 py-1.5 font-sans text-[0.8rem] transition-colors disabled:cursor-default disabled:opacity-50 ${
-							isActive
-								? 'bg-primary text-page border-primary'
-								: 'bg-surface text-secondary border-line hover:border-secondary'
+						className={`h-8 cursor-pointer rounded-md px-3 text-[14px] whitespace-nowrap transition-colors duration-[120ms] disabled:cursor-default disabled:opacity-40 ${
+							isActive ? 'border border-ink bg-paper font-medium text-ink' : 'border border-transparent bg-transparent text-secondary hover:text-ink'
 						}`}
 					>
 						{option.label}

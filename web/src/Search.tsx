@@ -1,199 +1,379 @@
-import { useMutation } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { searchByImage, searchByText } from './api/client';
-import type { RegionResult, SearchInput } from './api/types';
-import { AuthWidget } from './components/AuthWidget';
-import { DetailPanel } from './components/DetailPanel';
-import { Footer } from './components/Footer';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { getFont, getNeighbors, searchByImage, searchByText } from './api/client';
+import type { FontResult, RegionResult, SearchInput } from './api/types';
+import { AccountButton } from './components/account/AccountButton';
+import { FontDrawer } from './components/FontDrawer';
 import { LicenseFilter } from './components/LicenseFilter';
-import { RegionChip } from './components/RegionChip';
-import { ResultGrid } from './components/ResultGrid';
-import { SearchEmptyState } from './components/SearchEmptyState';
+import { Logo } from './components/Logo';
+import { ResultsMap } from './components/ResultsMap';
 import { SearchField } from './components/SearchField';
-import { SkeletonList } from './components/SkeletonList';
-import { StateMessage } from './components/StateMessage';
-import { ThemeToggle } from './components/ThemeToggle';
+import { SpecimenStrip } from './components/SpecimenStrip';
+import { TrailBar } from './components/TrailBar';
 import { useDelayedFlag } from './hooks/useDelayedFlag';
 import { useDelayedUnmount } from './hooks/useDelayedUnmount';
-import { useGoogleFonts } from './hooks/useGoogleFonts';
+import { useAccount } from './contexts/accountContext';
+import { useToast } from './contexts/toastContext';
+import { useAuth } from './hooks/useAuth';
+import { usePreferences } from './hooks/usePreferences';
+import { useSaved } from './hooks/useSaved';
 
-const RESULTS_HEIGHT = 460;
-const SLOW_REQUEST_HINT_DELAY_MS = 4000;
-// Must match .animate-panel-out's duration in index.css.
-const DETAIL_PANEL_EXIT_MS = 300;
+const COLD_START_HINT_DELAY_MS = 2500;
+// Must match the drawer-out animation in index.css.
+const DRAWER_EXIT_MS = 200;
 
-// Normalizes both modes to RegionResult[]; text search is always a single group.
 function runSearch(input: SearchInput, license: string): Promise<RegionResult[]> {
-	if (input.mode === 'image') {
-		return searchByImage(input.file, license);
-	}
+	if (input.mode === 'image') return searchByImage(input.file, license);
 	return searchByText(input.query, license).then((results) => [{ results }]);
 }
 
+function describeInput(input: SearchInput | null): string {
+	if (!input) return 'From the map';
+	return input.mode === 'text' ? `“${input.query}”` : 'Your photo';
+}
+
+function inputKey(input: SearchInput | null): string {
+	if (!input) return '';
+	return input.mode === 'text' ? `text:${input.query}` : `image:${input.file.name}:${input.file.size}:${input.file.lastModified}`;
+}
+
+function initialInput(params: URLSearchParams, state: unknown): SearchInput | null {
+	const query = params.get('q');
+	if (query) return { mode: 'text', query };
+	return (state as { input?: SearchInput } | null)?.input ?? null;
+}
+
+function SkeletonStrips() {
+	return (
+		<ul className="m-0 list-none p-0" aria-hidden="true">
+			{Array.from({ length: 5 }, (_, index) => (
+				<li key={index} className="border-b border-rule px-[18px] pt-[32px] pb-[16px]">
+					<span className="block h-10 rounded bg-[#F2F3F1]" style={{ width: `${70 - index * 6}%` }} />
+					<span className="mt-[18px] block h-3 w-56 rounded bg-[#F2F3F1]" />
+				</li>
+			))}
+		</ul>
+	);
+}
+
+function Notice({ tone = 'info', children }: { tone?: 'info' | 'error'; children: ReactNode }) {
+	const colours = tone === 'error' ? 'bg-error-tint text-error-ink' : 'bg-ground text-ink';
+	return (
+		<div role={tone === 'error' ? 'alert' : 'status'} className={`mt-6 flex flex-wrap items-center gap-3 rounded-lg px-4 py-3 text-[14px] leading-5 ${colours}`}>
+			{children}
+		</div>
+	);
+}
+
+/** While a photo is read: the photo itself, with crop marks closing in on the lettering. */
+function PhotoReading({ file }: { file: File }) {
+	const [url, setUrl] = useState<string | null>(null);
+	useEffect(() => {
+		const objectUrl = URL.createObjectURL(file);
+		setUrl(objectUrl);
+		return () => URL.revokeObjectURL(objectUrl);
+	}, [file]);
+	const corner = 'absolute h-6 w-6 border-accent';
+	return (
+		<div className="mt-6 flex flex-col items-start gap-3" role="status">
+			<div className="relative overflow-hidden rounded-lg bg-ground">
+				{url && <img src={url} alt="Your photo" className="block max-h-[260px] max-w-full object-contain" />}
+				<div className="absolute inset-6 animate-crop motion-reduce:animate-none" aria-hidden="true">
+					<span className={`${corner} top-0 left-0 border-t-2 border-l-2`} />
+					<span className={`${corner} top-0 right-0 border-t-2 border-r-2`} />
+					<span className={`${corner} bottom-0 left-0 border-b-2 border-l-2`} />
+					<span className={`${corner} right-0 bottom-0 border-r-2 border-b-2`} />
+				</div>
+			</div>
+			<p className="m-0 text-[14px] text-secondary">Reading the lettering in your photo…</p>
+		</div>
+	);
+}
+
 function Search() {
-	const [selectedId, setSelectedId] = useState<number | null>(null);
-	const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-	const [license, setLicense] = useState('');
-	const [lastInput, setLastInput] = useState<SearchInput | null>(null);
-	const lastSelectedIdRef = useRef<number | null>(null);
-	if (selectedId !== null) lastSelectedIdRef.current = selectedId;
+	const [searchParams] = useSearchParams();
+	const location = useLocation();
+	const { user } = useAuth();
+	const { requestSignIn } = useAccount();
+	const showToast = useToast();
+	const { preferences, update: updatePreferences } = usePreferences();
+	const { savedIds, save, remove } = useSaved();
+	const [licenseChoice, setLicense] = useState<string | null>(null);
+	const license = licenseChoice ?? preferences.license;
+	const [originOverride, setOriginOverride] = useState<string | null>(null);
+	const [lastInput, setLastInput] = useState<SearchInput | null>(() => initialInput(searchParams, location.state));
+	const [trail, setTrail] = useState<FontResult[]>([]);
+	const [openFont, setOpenFont] = useState<FontResult | null>(null);
+	const [expandedRegion, setExpandedRegion] = useState(0);
+	const previewWords = preferences.preview_words;
+	const setPreviewWords = (words: string) => {
+		if (words.trim() === previewWords) return;
+		updatePreferences({ preview_words: words }).catch((error: Error) => showToast({ tone: 'error', message: `Couldn’t save your preview words. ${error.message}` }));
+	};
+	const [draftWords, setDraftWords] = useState(previewWords);
+	useEffect(() => setDraftWords(previewWords), [previewWords]);
+	const lastOpenFont = useRef<FontResult | null>(null);
+	const opener = useRef<HTMLElement | null>(null);
+	if (openFont) lastOpenFont.current = openFont;
 
-	const isDetailOpen = selectedId !== null;
-	const shouldRenderDetail = useDelayedUnmount(
-		isDetailOpen,
-		DETAIL_PANEL_EXIT_MS
-	);
-
-	const searchMutation = useMutation({
-		mutationFn: (input: SearchInput) => runSearch(input, license),
+	// A query keyed by what was searched, so results survive remounts and the licence filter refetches on its own.
+	const searchQuery = useQuery({
+		queryKey: ['search', inputKey(lastInput), license],
+		queryFn: () => runSearch(lastInput!, license),
+		enabled: lastInput !== null,
+		retry: false,
+		staleTime: Infinity,
 	});
-	const isTakingAWhile = useDelayedFlag(
-		searchMutation.isPending,
-		SLOW_REQUEST_HINT_DELAY_MS
-	);
+	const isSearching = searchQuery.isFetching;
+	const isColdStart = useDelayedFlag(isSearching, COLD_START_HINT_DELAY_MS);
+	const currentHop = trail.at(-1) ?? null;
+	const neighborsQuery = useQuery({
+		queryKey: ['neighbors', currentHop?.id],
+		queryFn: () => getNeighbors(currentHop!.id),
+		enabled: currentHop !== null,
+	});
 
-	const regions = searchMutation.data ?? [];
-	const primary = regions[0];
-	const secondary = regions
-		.map((region, index) => ({ region, index }))
-		.slice(1)
-		.filter(({ region }) => region.results.length > 0);
-	const totalResults = regions.reduce((sum, region) => sum + region.results.length, 0);
-	const fontsReady = useGoogleFonts(regions.flatMap((region) => region.results.map((font) => font.name)));
-	const showSkeleton =
-		searchMutation.isPending ||
-		(searchMutation.isSuccess && totalResults > 0 && !fontsReady);
+	const regions = searchQuery.data ?? [];
+	const searchResults = regions[expandedRegion]?.results ?? [];
+	const hopResults = (neighborsQuery.data ?? []).filter((font) => !license || font.license === license);
+	const results = currentHop ? hopResults : searchResults;
+	const isLoading = (!currentHop && isSearching) || (currentHop !== null && neighborsQuery.isPending);
+	const isDrawerOpen = openFont !== null;
+	const shouldRenderDrawer = useDelayedUnmount(isDrawerOpen, DRAWER_EXIT_MS);
 
-	const runNewSearch = (input: SearchInput) => {
-		setSelectedId(null);
-		setExpandedIndex(null);
+	const startSearch = (input: SearchInput) => {
+		setTrail([]);
+		setOpenFont(null);
+		setExpandedRegion(0);
+		setOriginOverride(null);
 		setLastInput(input);
-		searchMutation.mutate(input);
 	};
 
+	const fromIds = searchParams.get('trail') ?? searchParams.get('from') ?? '';
+	const fromOrigin = searchParams.get('origin');
 	useEffect(() => {
-		if (!lastInput) return;
-		setSelectedId(null);
-		setExpandedIndex(null);
-		searchMutation.mutate(lastInput);
-	}, [license]);
+		// Arriving from a font picked on the map, a saved font, or a saved trail: start as hops from those fonts.
+		const ids = fromIds.split(',').map(Number).filter((id) => id > 0);
+		if (ids.length === 0) return;
+		let isCurrent = true;
+		Promise.all(ids.map(getFont))
+			.then((fonts) => {
+				if (!isCurrent) return;
+				setTrail(fonts);
+				setOriginOverride(fromOrigin);
+			})
+			.catch((error: Error) => showToast({ tone: 'error', message: `Couldn’t open that font. ${error.message}` }));
+		return () => {
+			isCurrent = false;
+		};
+	}, [fromIds, fromOrigin, showToast]);
+
+	const origin = originOverride ?? describeInput(lastInput);
+
+	const saveFont = (font: FontResult) => {
+		const walked = trail.map((step) => step.id);
+		const steps = walked.at(-1) === font.id ? walked : [...walked, font.id];
+		const foundWith = trail.length > 0 ? 'a trail' : lastInput?.mode === 'image' ? 'a photo' : origin;
+		save.mutate(
+			{ font_id: font.id, found_with: foundWith, trail: trail.length > 0 ? { origin, font_ids: steps } : undefined },
+			{
+				onSuccess: () =>
+					showToast({ tone: 'success', message: `Saved ${font.name}`, action: { label: 'Undo', onClick: () => remove.mutate(font.id) } }),
+				onError: (error: Error) =>
+					showToast({ tone: 'error', message: `Couldn’t save ${font.name}. ${error.message}`, action: { label: 'Retry', onClick: () => saveFont(font) } }),
+			}
+		);
+	};
+
+	const requestSave = (font: FontResult) => {
+		if (user) saveFont(font);
+		// Signing in happens at the moment it's needed, and the save finishes itself afterwards.
+		else requestSignIn(`Keep ${font.name} for later`, () => saveFont(font));
+	};
+
+	const openDetails = (id: number) => {
+		opener.current = document.activeElement as HTMLElement | null;
+		setOpenFont(results.find((font) => font.id === id) ?? null);
+	};
+
+	const closeDetails = useCallback(() => {
+		setOpenFont(null);
+		opener.current?.focus();
+	}, []);
+
+	const hopTo = (font: FontResult) => {
+		setOpenFont(null);
+		setTrail((steps) => [...steps, font]);
+	};
+
+	const openIndex = lastOpenFont.current ? results.findIndex((font) => font.id === lastOpenFont.current!.id) : -1;
+	const position = `${String(openIndex + 1).padStart(2, '0')} of ${results.length} · ${origin}`;
+	const heading = currentHop ? `${results.length} nearest ${currentHop.name}` : `${results.length} closest`;
+	const secondaryRegions = regions.map((region, index) => ({ region, index })).filter(({ region, index }) => index > 0 && region.results.length > 0);
 
 	return (
-		<div className="bg-page animate-page-in-right relative flex min-h-screen flex-col items-center px-4 py-8 motion-reduce:animate-none sm:px-6 sm:py-12">
-			<div className="mb-4 flex w-full items-center justify-end gap-3 text-[0.8rem] sm:absolute sm:top-5 sm:right-6 sm:mb-0 sm:w-auto">
-				<ThemeToggle />
-				<AuthWidget />
-			</div>
-
-			<h1 className="font-display text-primary m-0 text-[2rem] font-black tracking-[-0.02em] sm:text-[2.5rem]">
-				<Link to="/" className="cursor-default no-underline select-none">
-					type<span className="text-muted font-normal">/</span>seek
+		<div className="flex min-h-screen flex-col bg-paper">
+			<header className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-rule px-4 py-3 sm:px-8 lg:h-[72px] lg:flex-nowrap lg:py-0">
+				<Link to="/" className="no-underline" aria-label="typeseek home">
+					<Logo hasName={false} size={24} />
 				</Link>
-			</h1>
-
-			<p className="text-secondary mt-4 max-w-135 text-center font-sans text-[1rem] leading-normal sm:mt-5 sm:text-[1.1rem] sm:leading-[1.6]">
-				Search by visual style, not conversation — describe letterforms, weight,
-				or mood, like "bold rounded sans-serif," or drop in an image instead.
-			</p>
-
-			<div className="mt-6 w-full max-w-155 sm:mt-8">
-				<SearchField
-					onSearch={runNewSearch}
-					disabled={searchMutation.isPending}
-				/>
-			</div>
-
-			<div className="mt-4 w-full max-w-155">
-				<LicenseFilter
-					value={license}
-					onChange={setLicense}
-					disabled={searchMutation.isPending}
-				/>
-			</div>
-
-			{searchMutation.isIdle && <SearchEmptyState />}
-
-			{!searchMutation.isIdle && (
-				<div className="mt-8 flex w-full max-w-275 flex-col items-start gap-4 sm:mt-10 md:flex-row md:gap-6">
-					<div className="flex w-full min-w-0 flex-1 flex-col gap-8">
-						{showSkeleton && (
-							<>
-								<SkeletonList />
-								{isTakingAWhile && (
-									<p className="text-muted mt-2.5 text-center text-[0.8rem]">
-										Still working — the first search can take longer while the
-										model warms up.
-									</p>
-								)}
-							</>
-						)}
-						{searchMutation.isError && (
-							<StateMessage variant="bordered" tone="error">
-								{(searchMutation.error as Error).message}
-							</StateMessage>
-						)}
-						{!showSkeleton && searchMutation.isSuccess && totalResults === 0 && (
-							<StateMessage variant="bordered">
-								No matching fonts found. Try a different image or description.
-							</StateMessage>
-						)}
-						{!showSkeleton && searchMutation.isSuccess && totalResults > 0 && (
-							<>
-								{primary && primary.results.length > 0 && (
-									<ResultGrid
-										results={primary.results}
-										onSelect={setSelectedId}
-										scrollable
-										height={RESULTS_HEIGHT}
-									/>
-								)}
-
-								{secondary.length > 0 && (
-									<div className="flex w-full min-w-0 flex-col gap-3">
-										<p className="text-muted text-[0.8rem] font-sans">
-											Other lettering styles found in this photo
-										</p>
-										<div className="flex flex-wrap gap-2">
-											{secondary.map(({ region, index }) => (
-												<RegionChip
-													key={index}
-													thumbnail={region.thumbnail ?? ''}
-													label={region.results[0]?.name ?? 'Unknown'}
-													isActive={expandedIndex === index}
-													onClick={() =>
-														setExpandedIndex(expandedIndex === index ? null : index)
-													}
-												/>
-											))}
-										</div>
-										{expandedIndex !== null && regions[expandedIndex] && (
-											<ResultGrid
-												results={regions[expandedIndex].results}
-												onSelect={setSelectedId}
-												scrollable
-												height={RESULTS_HEIGHT}
-											/>
-										)}
-									</div>
-								)}
-							</>
-						)}
-					</div>
-
-					{shouldRenderDetail && lastSelectedIdRef.current !== null && (
-						<DetailPanel
-							fontId={lastSelectedIdRef.current}
-							onSelect={setSelectedId}
-							onClose={() => setSelectedId(null)}
-							height={RESULTS_HEIGHT}
-							closing={!isDetailOpen}
-						/>
-					)}
+				<div className="order-3 w-full lg:order-none lg:w-[560px]">
+					<SearchField onSearch={startSearch} disabled={isSearching} />
 				</div>
+				<div className="ml-auto flex items-center gap-4">
+					<div className="hidden sm:block">
+						<LicenseFilter value={license} onChange={setLicense} disabled={isSearching} />
+					</div>
+					<AccountButton />
+				</div>
+				<div className="order-4 sm:hidden">
+					<LicenseFilter value={license} onChange={setLicense} disabled={isSearching} />
+				</div>
+			</header>
+
+			{lastInput === null && trail.length === 0 && (
+				<main className="mx-auto w-full max-w-[720px] px-4 py-20 text-center">
+					<h1 className="m-0 text-[28px] leading-9 font-semibold tracking-[-0.02em]">Describe it, or show it</h1>
+					<p className="mx-auto mt-3 max-w-[520px] text-[16px] leading-[23px] tracking-[-0.01em] text-secondary">
+						Type a few words like “elegant thin serif”, or drop a photo of lettering you saw. You’ll see the closest fonts, set in your own words.
+					</p>
+				</main>
 			)}
 
-			<Footer />
+			{(lastInput !== null || trail.length > 0) && (
+				<main className={`mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-10 px-4 pt-6 pb-16 sm:px-8 sm:pt-8 ${preferences.is_map_shown ? 'lg:grid-cols-[440px_minmax(0,1fr)]' : ''}`}>
+					<aside className={preferences.is_map_shown ? 'hidden lg:block' : 'hidden'}>
+						{results.length > 0 && (
+							<div className="sticky top-8">
+								<ResultsMap results={results} trail={trail.map((font) => font.name)} selectedName={openFont?.name ?? null} />
+								<div className="mt-6 border-t border-rule pt-4">
+									<p className="m-0 caption text-secondary">Trail</p>
+									<p className="mt-2 mb-0 text-[15px]">
+										<span className="mr-2 inline-block h-2 w-2 rounded-full bg-accent" aria-hidden="true" />
+										{origin}
+										{trail.map((font) => ` → ${font.name}`).join('')}
+									</p>
+									{trail.length === 0 && (
+										<p className="mt-2 mb-0 text-[13px] leading-[18px] text-muted">
+											Use “More like this” on any font to walk to its neighbours. Each step is kept here.
+										</p>
+									)}
+								</div>
+							</div>
+						)}
+					</aside>
+
+					<section aria-label="Results" aria-busy={isLoading} className="min-w-0">
+						{results.length > 0 && preferences.is_map_shown && (
+							<div className="mb-5 lg:hidden">
+								<ResultsMap isCompact results={results} trail={trail.map((font) => font.name)} selectedName={openFont?.name ?? null} />
+							</div>
+						)}
+						{trail.length > 0 && (
+							<TrailBar origin={origin} steps={trail.map((font) => font.name)} onBack={() => setTrail((steps) => steps.slice(0, -1))} />
+						)}
+
+						<div className={`flex flex-wrap items-center justify-between gap-3 pb-3 ${trail.length ? 'pt-3' : 'border-b-[1.5px] border-ink'}`}>
+							<span className="caption text-secondary">{isLoading ? 'Searching' : heading}</span>
+							<form
+								className="hidden items-center gap-2 sm:flex"
+								onSubmit={(event) => {
+									event.preventDefault();
+									setPreviewWords(draftWords);
+								}}
+							>
+								<label htmlFor="preview-words" className="caption text-secondary">
+									Preview
+								</label>
+								<input
+									id="preview-words"
+									value={draftWords}
+									onChange={(event) => setDraftWords(event.target.value)}
+									onBlur={() => setPreviewWords(draftWords)}
+									className="h-8 w-[200px] rounded-[7px] border border-line bg-paper px-[9px] text-[13px] text-ink focus:border-ink focus:outline-none"
+								/>
+							</form>
+						</div>
+
+						{isLoading && (
+							<>
+								{isColdStart && <Notice>The first search wakes the model, so it takes a few seconds. The next ones are quick.</Notice>}
+								{!currentHop && lastInput?.mode === 'image' ? <PhotoReading file={lastInput.file} /> : <SkeletonStrips />}
+							</>
+						)}
+
+						{searchQuery.isError && !currentHop && (
+							<Notice tone="error">
+								<span>{searchQuery.error.message} Your search is kept.</span>
+								<button
+									type="button"
+									onClick={() => searchQuery.refetch()}
+									className="h-8 cursor-pointer rounded-[7px] border border-error bg-paper px-3 text-[13px] font-medium text-error-ink"
+								>
+									Try again
+								</button>
+							</Notice>
+						)}
+
+						{currentHop && neighborsQuery.isError && <Notice tone="error">Couldn’t load fonts near {currentHop.name}. Go back a step or try again.</Notice>}
+
+						{!isLoading && (currentHop ? neighborsQuery.isSuccess : searchQuery.isSuccess) && results.length === 0 && (
+							<Notice>No close match. Try describing it differently, for example by weight or shape, or upload a photo.</Notice>
+						)}
+
+						{!isLoading && results.length > 0 && (
+							<ol className="m-0 list-none p-0">
+								{results.map((font, index) => (
+									<SpecimenStrip
+										key={font.id}
+										font={font}
+										rank={index + 1}
+										previewWords={previewWords}
+										isSelected={openFont?.id === font.id}
+										onOpen={openDetails}
+										onMoreLikeThis={hopTo}
+									/>
+								))}
+							</ol>
+						)}
+
+						{!currentHop && secondaryRegions.length > 0 && (
+							<div className="mt-10">
+								<p className="m-0 caption text-secondary">Other lettering in this photo</p>
+								<div className="mt-3 flex flex-wrap gap-3">
+									{[{ region: regions[0], index: 0 }, ...secondaryRegions].map(({ region, index }) => (
+										<button
+											key={index}
+											type="button"
+											aria-pressed={expandedRegion === index}
+											onClick={() => setExpandedRegion(index)}
+											className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border bg-paper p-1.5 ${expandedRegion === index ? 'border-ink' : 'border-line hover:border-ink'}`}
+										>
+											{region.thumbnail && <img src={`data:image/jpeg;base64,${region.thumbnail}`} alt="" className="h-16 w-16 rounded object-cover" />}
+											<span className="max-w-16 truncate text-[12px] text-secondary">{region.results[0]?.name ?? 'Unknown'}</span>
+										</button>
+									))}
+								</div>
+							</div>
+						)}
+					</section>
+				</main>
+			)}
+
+			{shouldRenderDrawer && lastOpenFont.current && (
+				<FontDrawer
+					font={lastOpenFont.current}
+					position={position}
+					previewWords={previewWords}
+					isClosing={!isDrawerOpen}
+					isSaved={savedIds.has(lastOpenFont.current.id)}
+					isSaving={save.isPending}
+					onSave={requestSave}
+					onClose={closeDetails}
+					onMoreLikeThis={hopTo}
+				/>
+			)}
 		</div>
 	);
 }

@@ -11,11 +11,10 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@fontsource-variable/fraunces": "^5.3.0",
-		"@fontsource-variable/inter": "^5.3.0",
+		"@fontsource/ibm-plex-mono": "^5.3.0",
+		"@fontsource/ibm-plex-sans": "^5.3.0",
 		"@tailwindcss/vite": "^4.3.3",
 		"@tanstack/react-query": "^5.101.2",
-		"locomotive-scroll": "^5.0.1",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
 		"react-router-dom": "^7.18.1",

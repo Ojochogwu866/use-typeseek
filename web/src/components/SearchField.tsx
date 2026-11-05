@@ -83,10 +83,10 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 	};
 
 	return (
-		<div className="w-full">
+		<div className="relative w-full">
 			<div
-				className={`group bg-surface focus-within:border-primary focus-within:bg-surface-hover flex items-center gap-3 rounded-lg border py-[0.4rem] pr-[0.4rem] pl-4 transition-[border-color,background-color,box-shadow] duration-150 ${
-					isDragging ? 'border-secondary bg-surface-hover' : 'border-line'
+				className={`group flex h-12 items-center gap-3 rounded-[10px] border bg-paper pr-[6px] pl-[14px] transition-colors duration-[120ms] focus-within:border-ink ${
+					isDragging ? 'border-accent bg-tint' : 'border-line'
 				} ${disabled ? 'opacity-60' : ''}`}
 				onDragOver={(event) => {
 					event.preventDefault();
@@ -101,7 +101,7 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 			>
 				<MagnifyingGlassIcon
 					size={18}
-					className="text-muted group-focus-within:text-primary shrink-0 transition-colors duration-150"
+					className="shrink-0 text-muted group-focus-within:text-ink"
 				/>
 
 				{hasFile ? (
@@ -113,20 +113,20 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 							<img
 								src={file.previewUrl}
 								alt=""
-								className="border-line-faint h-8 w-8 shrink-0 rounded border object-cover"
+								className="h-8 w-8 shrink-0 rounded border border-rule object-cover"
 							/>
 							<img
 								src={file.previewUrl}
 								alt={`Preview of ${file.name}`}
-								className="border-line bg-surface pointer-events-none invisible absolute top-[calc(100%+10px)] left-0 z-20 h-auto w-60 max-w-[60vw] -translate-y-1 rounded-md border object-contain opacity-0 shadow-[0_12px_32px_rgba(0,0,0,0.35)] transition-[opacity,transform] duration-150 group-hover/thumb:visible group-hover/thumb:translate-y-0 group-hover/thumb:opacity-100 group-focus-visible/thumb:visible group-focus-visible/thumb:translate-y-0 group-focus-visible/thumb:opacity-100"
+								className="pointer-events-none invisible absolute top-[calc(100%+10px)] left-0 z-20 h-auto w-60 max-w-[60vw] rounded-[10px] border border-ink bg-paper object-contain opacity-0 transition-opacity duration-[120ms] group-hover/thumb:visible group-hover/thumb:opacity-100 group-focus-visible/thumb:visible group-focus-visible/thumb:opacity-100"
 							/>
 						</span>
-						<span className="text-primary min-w-0 overflow-hidden text-[0.95rem] text-ellipsis whitespace-nowrap">
+						<span className="min-w-0 truncate text-[15px] text-ink">
 							{file.name}
 						</span>
 						<button
 							type="button"
-							className="text-muted hover:text-primary hover:bg-surface-hover ml-auto flex shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-[0.35rem]"
+							className="ml-auto flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent text-muted hover:bg-tint hover:text-ink"
 							onClick={clearFile}
 							aria-label="Remove image and search by text instead"
 						>
@@ -137,8 +137,9 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 					<input
 						ref={inputRef}
 						type="text"
-						className="text-primary placeholder:text-muted min-w-0 flex-1 border-0 bg-transparent py-[0.65rem] font-sans text-[1.05rem] focus:outline-none disabled:cursor-default"
-						placeholder='Describe a style — e.g. "bold rounded sans-serif"'
+						className="min-w-0 flex-1 border-0 bg-transparent font-sans text-[16px] text-ink placeholder:text-muted focus:outline-none disabled:cursor-default"
+						aria-label="Describe a font"
+						placeholder="Describe a style, or drop a photo"
 						value={query}
 						disabled={disabled}
 						onChange={(event) => setQuery(event.target.value)}
@@ -150,7 +151,7 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 
 				<button
 					type="button"
-					className="bg-primary text-page flex h-[42px] w-[42px] shrink-0 cursor-pointer items-center justify-center rounded-md border-0 transition-opacity duration-150 enabled:hover:opacity-85 disabled:cursor-default disabled:opacity-35"
+					className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border-0 bg-ink text-paper transition-colors duration-[120ms] enabled:hover:bg-[#2A3631] enabled:active:bg-black disabled:cursor-default disabled:opacity-40"
 					onClick={
 						hasFile || hasQuery ? submit : () => fileInputRef.current?.click()
 					}
@@ -177,15 +178,15 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 			</div>
 
 			<p
-				className="text-muted mt-1 min-h-[1.4em] px-1 text-[0.85rem] leading-[1.5]"
+				className="absolute top-full left-0 mt-1 px-1 text-[13px] leading-[18px] text-muted"
 				aria-live="polite"
 			>
 				{error ? (
-					<span className="text-error inline-flex items-center gap-[0.35rem]">
+					<span className="inline-flex items-center gap-[0.35rem] text-error">
 						<WarningIcon size={14} /> {error}
 					</span>
 				) : hasFile ? (
-					'Image attached — click send to search. Text search is disabled until you remove it.'
+					'Photo attached. Press search to find its lettering, or remove it to type instead.'
 				) : (
 					''
 				)}

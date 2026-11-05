@@ -1,55 +1,53 @@
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Footer } from './components/Footer';
-import { ArrowRightIcon } from './components/icons';
-import { ThemeToggle } from './components/ThemeToggle';
+import type { SearchInput } from './api/types';
+import { AccountButton } from './components/account/AccountButton';
+import { Logo } from './components/Logo';
+import { MapExplorer } from './components/MapExplorer';
+import { SearchField } from './components/SearchField';
+import { useMapData } from './hooks/useMapData';
 
 function Home() {
 	const navigate = useNavigate();
+	const map = useMapData();
+
+	const search = (input: SearchInput) => {
+		if (input.mode === 'text') navigate(`/search?q=${encodeURIComponent(input.query)}`);
+		else navigate('/search', { state: { input } });
+	};
+
+	const pickFont = useCallback((fontId: number) => navigate(`/search?from=${fontId}`), [navigate]);
 
 	return (
-		<div className="bg-page animate-page-in-left relative flex min-h-screen flex-col items-center px-4 py-10 motion-reduce:animate-none sm:px-6 sm:py-16">
-			<div className="mb-4 flex w-full justify-end sm:absolute sm:top-5 sm:right-6 sm:mb-0 sm:w-auto">
-				<ThemeToggle />
-			</div>
+		<div className="flex h-dvh min-h-[640px] flex-col bg-ground">
+			<header className="flex h-[72px] shrink-0 items-center justify-between px-4 sm:px-12">
+				<Logo />
+				<nav className="flex items-center gap-6 text-[15px] font-medium">
+					<a href="/about" className="hidden text-ink no-underline hover:underline sm:inline">
+						How the map works
+					</a>
+					<AccountButton />
+				</nav>
+			</header>
 
-			<div className="flex flex-1 flex-col items-center justify-center gap-6 sm:gap-8">
-				<h1 className="font-display text-primary m-0 cursor-default text-center text-[3rem] font-black tracking-[-0.02em] select-none sm:text-[4.5rem] md:text-[6rem] lg:text-[8rem]">
-					type<span className="text-muted font-normal">/</span>seek
-				</h1>
+			<main className="relative flex-1">
+				<h1 className="sr-only">typeseek: every free font, laid out by how it looks</h1>
+				{map.data && <MapExplorer data={map.data} onPick={pickFont} />}
+				{map.isError && <p className="p-12 text-[15px] text-secondary">The map didn’t load. You can still search below.</p>}
 
-				<div className="flex max-w-155 flex-col gap-4 sm:gap-5">
-					<p className="text-secondary m-0 text-center font-sans text-[1rem] leading-[1.6] sm:text-[1.1rem] sm:leading-[1.7]">
-						You're walking past a shopfront and a hand-painted sign stops you
-						mid-step. Or it's a flyer stapled to a lamppost, curling at the
-						edges, the lettering doing something you've never quite seen before.
-						You take a photo before you've even decided why.
-					</p>
-					<p className="text-secondary m-0 text-center font-sans text-[1rem] leading-[1.6] sm:text-[1.1rem] sm:leading-[1.7]">
-						Later, you go looking for the name. You try describing it — bold, a
-						little rounded, condensed maybe — but the words come out wrong, and
-						every search leads somewhere close but not quite it. You scroll past
-						hundreds of typefaces that all start to blur together. The one you
-						actually saw is still out there, nameless.
-					</p>
-					<p className="text-secondary m-0 text-center font-sans text-[1rem] leading-[1.6] sm:text-[1.1rem] sm:leading-[1.7]">
-						That's the gap typeseek closes. Show it a photo, or just describe
-						what you remember, and it finds the font — not something similar,
-						not a guess, but a real match pulled from thousands of typefaces by
-						how they actually look. No more scrolling. No more almost.
-					</p>
-				</div>
-
-				<button
-					type="button"
-					className="border-primary bg-primary text-page flex w-full cursor-pointer items-center justify-center gap-[0.65rem] rounded-lg border px-8 py-4 font-sans text-[1.05rem] font-semibold transition-[opacity,gap] duration-150 hover:gap-[0.9rem] hover:opacity-85 sm:w-auto sm:min-w-85"
-					onClick={() => navigate('/search')}
+				<section
+					aria-label="Search"
+					className="absolute right-4 bottom-4 left-4 rounded-xl border border-ink bg-paper p-6 sm:right-12 sm:bottom-12 sm:left-auto sm:w-[520px] sm:p-7"
 				>
-					<span>Get started</span>
-					<ArrowRightIcon size={18} className="shrink-0" />
-				</button>
-			</div>
-
-			<Footer />
+					<p className="m-0 mb-4 text-[28px] leading-[32px] font-semibold tracking-[-0.03em] sm:mb-0 sm:text-[44px] sm:leading-[46px]" aria-hidden="true">
+						Every free font, laid out by how it looks.
+					</p>
+					<p className="mt-4 mb-5 hidden text-[16px] leading-[23px] tracking-[-0.01em] text-secondary sm:block">
+						Similar fonts sit together. Describe what you saw or drop in a photo, and Typeseek puts a pin on the map. Then walk to the neighbours until one is right.
+					</p>
+					<SearchField onSearch={search} />
+				</section>
+			</main>
 		</div>
 	);
 }
