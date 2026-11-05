@@ -27,6 +27,13 @@ type Store interface {
 	CreateSession(ctx context.Context, userID int64) (string, error)
 	GetUserBySession(ctx context.Context, token string) (*User, error)
 	DeleteSession(ctx context.Context, token string) error
+	SaveFont(ctx context.Context, userID, fontID int64, foundWith, trailOrigin string, trailFontIDs []int64) (*SavedFont, error)
+	RemoveSavedFont(ctx context.Context, userID, fontID int64) error
+	RemoveTrail(ctx context.Context, userID, trailID int64) error
+	ListSaved(ctx context.Context, userID int64) (*Saved, error)
+	GetPreferences(ctx context.Context, userID int64) (*Preferences, error)
+	SetPreferences(ctx context.Context, userID int64, preferences Preferences) error
+	DeleteUser(ctx context.Context, userID int64) error
 }
 
 // Embedder is the subset of *SidecarClient the handlers need — lets tests inject a fake.

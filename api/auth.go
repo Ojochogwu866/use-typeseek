@@ -114,6 +114,11 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
 		_ = s.db.DeleteSession(r.Context(), cookie.Value)
 	}
+	clearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    "",
@@ -122,7 +127,6 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	})
-	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
