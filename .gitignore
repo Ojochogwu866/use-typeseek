@@ -13,3 +13,7 @@ api/api
 todos.md
 .DS_Store
 evaluation/judge.html
+
+# Working files kept locally, not published
+docs/
+evaluation/results/live-*.json
