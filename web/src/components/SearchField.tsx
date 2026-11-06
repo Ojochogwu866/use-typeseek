@@ -139,7 +139,7 @@ export function SearchField({ onSearch, disabled }: SearchFieldProps) {
 						type="text"
 						className="min-w-0 flex-1 border-0 bg-transparent font-sans text-[16px] text-ink placeholder:text-muted focus:outline-none disabled:cursor-default"
 						aria-label="Describe a font"
-						placeholder="Describe a style, or drop a photo"
+						placeholder="Describe a style or add a photo"
 						value={query}
 						disabled={disabled}
 						onChange={(event) => setQuery(event.target.value)}
