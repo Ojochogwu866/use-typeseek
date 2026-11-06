@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { SearchInput } from '../api/types';
 import { Logo } from '../components/Logo';
 import { SearchField } from '../components/SearchField';
+import { PageMeta } from '../components/PageMeta';
 
 function NotFound() {
 	const navigate = useNavigate();
@@ -12,6 +13,7 @@ function NotFound() {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-ground">
+			<PageMeta title="Page not found" />
 			<header className="flex h-[72px] items-center px-4 sm:px-8">
 				<a href="/" className="no-underline" aria-label="typeseek home">
 					<Logo />

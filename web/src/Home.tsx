@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SearchInput } from './api/types';
 import { AccountButton } from './components/account/AccountButton';
@@ -6,10 +6,21 @@ import { Logo } from './components/Logo';
 import { MapExplorer } from './components/MapExplorer';
 import { SearchField } from './components/SearchField';
 import { useMapData } from './hooks/useMapData';
+import { PageMeta } from './components/PageMeta';
 
 function Home() {
 	const navigate = useNavigate();
 	const map = useMapData();
+	const searchCard = useRef<HTMLElement>(null);
+	const [searchCardHeight, setSearchCardHeight] = useState(0);
+
+	useEffect(() => {
+		const card = searchCard.current;
+		if (!card) return;
+		const observer = new ResizeObserver(() => setSearchCardHeight(card.offsetHeight + 16));
+		observer.observe(card);
+		return () => observer.disconnect();
+	}, []);
 
 	const search = (input: SearchInput) => {
 		if (input.mode === 'text') navigate(`/search?q=${encodeURIComponent(input.query)}`);
@@ -20,6 +31,7 @@ function Home() {
 
 	return (
 		<div className="flex h-dvh flex-col bg-ground sm:min-h-[640px]">
+			<PageMeta path="/" />
 			<header className="flex h-14 shrink-0 sm:h-[72px] items-center justify-between px-4 sm:px-12">
 				<Logo />
 				<nav className="flex items-center gap-6 text-[15px] font-medium">
@@ -30,16 +42,17 @@ function Home() {
 				</nav>
 			</header>
 
-			<main className="flex min-h-0 flex-1 flex-col sm:relative">
+			<main className="relative min-h-0 flex-1">
 				<h1 className="sr-only">typeseek: every free font, laid out by how it looks</h1>
-				<div className="relative min-h-0 flex-1">
-					{map.data && <MapExplorer data={map.data} onPick={pickFont} />}
+				<div className="absolute inset-0">
+					{map.data && <MapExplorer data={map.data} onPick={pickFont} coveredBottom={searchCardHeight} />}
 					{map.isError && <p className="p-12 text-[15px] text-secondary">The map didn’t load. You can still search below.</p>}
 				</div>
 
 				<section
+					ref={searchCard}
 					aria-label="Search"
-					className="shrink-0 border-t border-ink bg-paper px-4 pt-4 pb-[max(16px,env(safe-area-inset-bottom))] sm:absolute sm:right-12 sm:bottom-12 sm:w-[520px] sm:rounded-xl sm:border sm:p-7"
+					className="absolute right-4 bottom-[max(16px,env(safe-area-inset-bottom))] left-4 z-10 rounded-xl border border-ink bg-paper p-4 sm:right-12 sm:bottom-12 sm:left-auto sm:w-[520px] sm:p-7"
 				>
 					<p className="m-0 mb-3 text-balance text-[22px] leading-[26px] font-semibold tracking-[-0.025em] sm:mb-0 sm:text-[44px] sm:leading-[46px] sm:tracking-[-0.03em]" aria-hidden="true">
 						Every free font, laid out by how it looks.

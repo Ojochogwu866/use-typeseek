@@ -19,6 +19,8 @@ interface Camera {
 interface MapExplorerProps {
 	data: MapData;
 	onPick: (fontId: number) => void;
+	/** Height of whatever floats over the bottom of the map, so a portrait screen frames the map above it. */
+	coveredBottom?: number;
 }
 
 interface Hover {
@@ -33,11 +35,13 @@ interface Hover {
  * The whole index as an explorable map. Until it is clicked or focused, the page scrolls normally;
  * after that the scroll, drag and arrow keys move the map. It redraws only when something changes.
  */
-export function MapExplorer({ data, onPick }: MapExplorerProps) {
+export function MapExplorer({ data, onPick, coveredBottom = 0 }: MapExplorerProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const camera = useRef<Camera>({ x: 0.5, y: 0.5, zoom: 1 });
 	const velocity = useRef({ x: 0, y: 0 });
-	const size = useRef({ width: 0, height: 0, scaleX: 1, scaleY: 1 });
+	const size = useRef({ width: 0, height: 0, centreY: 0, scaleX: 1, scaleY: 1 });
+	const covered = useRef(coveredBottom);
+	const relayout = useRef(() => {});
 	const frame = useRef(0);
 	const drag = useRef<{ x: number; y: number; time: number; distance: number } | null>(null);
 	const touches = useRef(new Map<number, { x: number; y: number }>());
@@ -60,7 +64,7 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 
 		const toScreen = (x: number, y: number) => [
 			(x - camera.current.x) * scaleX() + size.current.width / 2,
-			(y - camera.current.y) * scaleY() + size.current.height / 2,
+			(y - camera.current.y) * scaleY() + size.current.centreY,
 		];
 
 		const draw = () => {
@@ -137,16 +141,18 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 			canvas.width = width * ratio;
 			canvas.height = height * ratio;
 			context.setTransform(ratio, 0, 0, ratio, 0, 0);
+			const isPortrait = height > width;
+			const visibleHeight = isPortrait ? height - covered.current : height;
 			const scaleX = Math.min(width * 0.92, height * 1.9);
 			// The layout's proportions carry no meaning, so a portrait screen stretches it to fill the height.
-			const scaleY = height > width ? Math.min(height * 0.86, scaleX * 1.7) : scaleX * ASPECT;
-			size.current = { width, height, scaleX, scaleY };
+			const scaleY = isPortrait ? Math.min(visibleHeight * 0.86, scaleX * 1.7) : scaleX * ASPECT;
+			size.current = { width, height, centreY: visibleHeight / 2, scaleX, scaleY };
 			requestDraw();
 		};
 
 		const toMap = (screenX: number, screenY: number) => [
 			(screenX - size.current.width / 2) / scaleX() + camera.current.x,
-			(screenY - size.current.height / 2) / scaleY() + camera.current.y,
+			(screenY - size.current.centreY) / scaleY() + camera.current.y,
 		];
 
 		const panBy = (screenX: number, screenY: number) => {
@@ -301,7 +307,7 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 
 		const onKeyDown = (event: KeyboardEvent) => {
 			const centreX = size.current.width / 2;
-			const centreY = size.current.height / 2;
+			const centreY = size.current.centreY;
 			const actions: Record<string, () => void> = {
 				ArrowLeft: () => panBy(-60, 0),
 				ArrowRight: () => panBy(60, 0),
@@ -332,6 +338,7 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 		canvas.parentElement?.querySelector('[data-zoom="in"]')?.addEventListener('click', zoomIn);
 		canvas.parentElement?.querySelector('[data-zoom="out"]')?.addEventListener('click', zoomOut);
 
+		relayout.current = resize;
 		const observer = new ResizeObserver(resize);
 		observer.observe(canvas);
 		canvas.addEventListener('pointerdown', onPointerDown);
@@ -361,6 +368,11 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 		};
 	}, [data, onPick, isReducedMotion]);
 
+	useEffect(() => {
+		covered.current = coveredBottom;
+		relayout.current();
+	}, [coveredBottom]);
+
 	const hovered = hover ? data.fonts[hover.index] : null;
 	const previewStyle = hovered && hover?.isPreviewReady ? { fontFamily: `"${hovered[3]}", serif` } : undefined;
 	const zoomButtonClasses = 'h-10 w-10 cursor-pointer rounded-lg border border-line bg-paper text-[18px] font-medium hover:border-ink sm:h-9 sm:w-9';
@@ -378,7 +390,7 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 			{hovered && hover && !hover.isPinned && (
 				<div
 					role="status"
-					className="pointer-events-none absolute z-10 w-max max-w-[300px] rounded-[10px] border border-ink bg-paper px-4 py-3"
+					className="pointer-events-none absolute z-20 w-max max-w-[300px] rounded-[10px] border border-ink bg-paper px-4 py-3"
 					style={{ left: Math.max(8, Math.min(hover.left + 16, (size.current.width || 600) - 300)), top: Math.max(hover.top - 76, 8) }}
 				>
 					<span className="block text-[30px] leading-[36px] whitespace-nowrap" style={previewStyle}>
@@ -392,7 +404,7 @@ export function MapExplorer({ data, onPick }: MapExplorerProps) {
 				</div>
 			)}
 			{hovered && hover?.isPinned && (
-				<div role="status" className="absolute inset-x-3 bottom-3 z-10 rounded-xl border border-ink bg-paper p-4 animate-fade-in">
+				<div role="status" className="absolute inset-x-4 z-20 rounded-xl border border-ink bg-paper p-4 animate-fade-in" style={{ bottom: coveredBottom + 8 }}>
 					<div className="flex items-start gap-3">
 						<div className="min-w-0 flex-1">
 							<span className="block truncate text-[28px] leading-[34px]" style={previewStyle}>

@@ -18,6 +18,7 @@ import { useToast } from './contexts/toastContext';
 import { useAuth } from './hooks/useAuth';
 import { usePreferences } from './hooks/usePreferences';
 import { useSaved } from './hooks/useSaved';
+import { PageMeta } from './components/PageMeta';
 
 const COLD_START_HINT_DELAY_MS = 2500;
 // Must match the drawer-out animation in index.css.
@@ -214,6 +215,7 @@ function Search() {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-paper">
+			<PageMeta title={lastInput?.mode === 'text' ? `Fonts like ${origin}` : lastInput ? 'Fonts like your photo' : 'Search'} />
 			<header className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-rule px-4 py-3 sm:px-8 lg:h-[72px] lg:flex-nowrap lg:py-0">
 				<Link to="/" className="no-underline" aria-label="typeseek home">
 					<Logo hasName={false} size={24} />

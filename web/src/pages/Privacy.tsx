@@ -1,4 +1,5 @@
 import { PageFooter, PageHeader } from '../components/PageHeader';
+import { PageMeta } from '../components/PageMeta';
 
 const SECTIONS = [
 	{
@@ -23,6 +24,7 @@ function Privacy() {
 	return (
 		<div className="flex min-h-screen flex-col bg-paper">
 			<PageHeader current="privacy" />
+			<PageMeta title="Privacy" path="/privacy" />
 			<main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col gap-12 px-4 pt-14 pb-20 sm:px-8 lg:flex-row lg:gap-24">
 				<article className="max-w-[640px]">
 					<p className="m-0 caption text-secondary">Privacy · updated 5 November 2026</p>

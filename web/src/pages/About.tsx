@@ -1,4 +1,5 @@
 import { PageFooter, PageHeader } from '../components/PageHeader';
+import { PageMeta } from '../components/PageMeta';
 
 const STEPS = [
 	{
@@ -19,6 +20,7 @@ function About() {
 	return (
 		<div className="flex min-h-screen flex-col bg-paper">
 			<PageHeader current="about" />
+			<PageMeta title="How the map works" path="/about" />
 			<main className="flex-1">
 				<div className="mx-auto max-w-[1100px] px-4 pt-14 pb-10 sm:px-8 sm:pt-[72px]">
 					<p className="m-0 caption text-secondary">About</p>

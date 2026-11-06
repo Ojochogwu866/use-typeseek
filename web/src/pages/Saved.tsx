@@ -15,6 +15,7 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useSaved } from '../hooks/useSaved';
 import { licenceLabel } from '../lib/licence';
 import { trailLink } from '../lib/trailLink';
+import { PageMeta } from '../components/PageMeta';
 
 const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' });
 
@@ -118,6 +119,7 @@ function Saved() {
 
 	return (
 		<div className="flex min-h-screen flex-col bg-paper">
+			<PageMeta title="Saved" />
 			<header className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-rule px-4 py-3 sm:px-8 lg:h-[72px] lg:flex-nowrap lg:py-0">
 				<Link to="/" className="no-underline" aria-label="typeseek home">
 					<Logo hasName={false} size={24} />
